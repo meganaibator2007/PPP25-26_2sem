@@ -2,18 +2,18 @@ import copy
 
 class Piece:
     def __init__(self, color, name, char):
-        self.color = color 
+        self.color = color
         self.name = name
         self.char = char
 
     def get_legal_moves(self, board, x, y, history):
         return []
 
-class MegaKnight(Piece): 
+class MegaKnight(Piece):
     def get_legal_moves(self, board, x, y, history):
         moves = []
         offsets = [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1),
-                   (0,2),(0,-2),(2,0),(-2,0)] 
+                   (0,2),(0,-2),(2,0),(-2,0)]
         for dx, dy in offsets:
             nx, ny = x + dx, y + dy
             if 0 <= nx < 8 and 0 <= ny < 8:
@@ -22,7 +22,7 @@ class MegaKnight(Piece):
                     moves.append((nx, ny))
         return moves
 
-class Witch(Piece): 
+class Witch(Piece):
     def get_legal_moves(self, board, x, y, history):
         moves = []
         for dx, dy in [(-1,-1), (1,-1), (-1,1), (1,1)]:
@@ -37,8 +37,8 @@ class Witch(Piece):
 class Valkyrie(Piece):
     def get_legal_moves(self, board, x, y, history):
         moves = []
-        offsets = [(0,1),(0,-1),(1,0),(-1,0), (0,2),(0,-2),(2,0),(-2,0), 
-                   (1,1),(1,-1),(-1,1),(-1,-1)] 
+        offsets = [(0,1),(0,-1),(1,0),(-1,0), (0,2),(0,-2),(2,0),(-2,0),
+                   (1,1),(1,-1),(-1,1),(-1,-1)]
         for dx, dy in offsets:
             nx, ny = x + dx, y + dy
             if 0 <= nx < 8 and 0 <= ny < 8:
@@ -51,12 +51,10 @@ class Pawn(Piece):
     def get_legal_moves(self, board, x, y, history):
         moves = []
         dir = -1 if self.color == 'W' else 1
-        
         if 0 <= y+dir < 8 and board[y+dir][x] is None:
             moves.append((x, y+dir))
             if (y == 6 and self.color == 'W') or (y == 1 and self.color == 'B'):
                 if board[y+dir*2][x] is None: moves.append((x, y+dir*2))
-       
         for dx in [-1, 1]:
             nx, ny = x + dx, y + dir
             if 0 <= nx < 8 and 0 <= ny < 8:
@@ -82,6 +80,7 @@ class SlidingPiece(Piece):
     def __init__(self, color, name, char, dirs):
         super().__init__(color, name, char)
         self.dirs = dirs
+
     def get_legal_moves(self, board, x, y, history):
         moves = []
         for dx, dy in self.dirs:
@@ -90,9 +89,12 @@ class SlidingPiece(Piece):
                 if board[ny][nx] is None:
                     moves.append((nx, ny))
                 elif board[ny][nx].color != self.color:
-                    moves.append((nx, ny)); break
-                else: break
-                nx += dx; ny += dy
+                    moves.append((nx, ny))
+                    break
+                else:
+                    break
+                nx += dx
+                ny += dy
         return moves
 
 class ChessEngine:
@@ -137,7 +139,6 @@ class ChessEngine:
         raw_moves = p.get_legal_moves(self.grid, x, y, self.history)
         safe_moves = []
         for mx, my in raw_moves:
-            # Симуляция
             temp = copy.deepcopy(self.grid)
             temp[my][mx] = temp[y][x]
             temp[y][x] = None
@@ -149,7 +150,6 @@ class ChessEngine:
         p = self.grid[y1][x1]
         self.history.append({'g': copy.deepcopy(self.grid), 'f':(x1,y1), 't':(x2,y2), 'p':p, 'turn':self.turn})
         
-       
         if isinstance(p, Pawn) and x1 != x2 and self.grid[y2][x2] is None: self.grid[y1][x2] = None
         
         self.grid[y2][x2], self.grid[y1][x1] = p, None
@@ -179,7 +179,7 @@ class ChessEngine:
             for x in range(8):
                 p = self.grid[y][x]
                 bg = "\033[42m" if (x+y)%2==0 else "\033[40m"
-                fg = "\033[97m" if p and p.color == 'W' else "\033[91m" 
+                fg = "\033[97m" if p and p.color == 'W' else "\033[91m"
                 reset = "\033[0m"
                 
                 char = p.char if p else " "
@@ -192,14 +192,39 @@ class ChessEngine:
 
 if __name__ == "__main__":
     game = ChessEngine()
+    print("=" * 45)
+    print("  ИНТЕРАКТИВНЫЙ ШАХМАТНЫЙ ДВИЖОК v2.0")
+    print("=" * 45)
+    print(" Доступные команды:")
+    print(" - Перемещение: x_откуда y_откуда x_куда y_куда")
+    print(" - Подсветка:   show x y")
+    print(" - Отмена хода: back")
+    print("=" * 45)
+
     while True:
         game.render()
-        inp = input(f"Ход {game.turn} (x1 y1 x2 y2 / undo / hint x y): ").split()
+        current_player = "БЕЛЫЕ" if game.turn == 'W' else "ЧЕРНЫЕ"
+        
         try:
-            if not inp: continue
-            if inp[0] == 'undo': game.undo()
-            elif inp[0] == 'hint': game.render((int(inp[1]), int(inp[2])))
-            else:
+            inp = input(f"\n[Очередь: {current_player}] Введите команду > ").split()
+            if not inp:
+                continue
+                
+            if inp[0] == 'back':
+                game.undo()
+                print(">> Последний ход успешно отменен.")
+                
+            elif inp[0] == 'show' and len(inp) == 3:
+                game.render((int(inp[1]), int(inp[2])))
+                
+            elif len(inp) == 4:
                 if not game.execute_move(int(inp[0]), int(inp[1]), int(inp[2]), int(inp[3])):
-                    print("!!! Ошибка: Ход невозможен !!!")
-        except: print("!!! Ошибка ввода !!!")
+                    print(">> [ОШИБКА] Нелегальный ход или угроза королю!")
+            else:
+                print(">> [ОШИБКА] Неизвестная команда. Повторите ввод.")
+                
+        except KeyboardInterrupt:
+            print("\n>> Завершение работы движка. До свидания!")
+            break
+        except Exception:
+            print(">> [ОШИБКА] Неверный формат ввода! Используйте цифры.")
